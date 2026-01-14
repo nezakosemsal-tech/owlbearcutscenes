@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cutscene Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        #container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+
+        #videoPlayer {
+            max-width: 100%;
+            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Overlay de fade */
+        #fadeOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            opacity: 1;
+            transition: opacity 1s ease;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #fadeOverlay.hidden {
+            opacity: 0;
+        }
+
+        /* Letterbox effect */
+        .letterbox::before,
+        .letterbox::after {
+            content: '';
+            position: fixed;
+            left: 0;
+            width: 100%;
+            height: 10%;
+            background: #000;
+            z-index: 5;
+        }
+
+        .letterbox::before {
+            top: 0;
+        }
+
+        .letterbox::after {
+            bottom: 0;
+        }
+
+        /* Informações da cutscene */
+        #cutsceneInfo {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            z-index: 15;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        #cutsceneInfo .title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        #cutsceneInfo .status {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        /* Controles (apenas para debug/teste) */
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none; /* Oculto por padrão */
+            gap: 10px;
+            z-index: 15;
+        }
+
+        #controls button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            z-index: 20;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="container" class="letterbox">
+        <video id="videoPlayer" controls></video>
+    </div>
+
+    <div id="fadeOverlay"></div>
+    
+    <div id="cutsceneInfo">
+        <div class="title" id="cutsceneTitle">Cutscene</div>
+        <div class="status" id="cutsceneStatus">Carregando...</div>
+    </div>
+
+    <div class="spinner" id="loadingSpinner"></div>
+
+    <div id="controls">
+        <button id="playBtn">Play</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="closeBtn">Fechar</button>
+    </div>
+
+    <script type="module">
+        import OBR from "@owlbear-rodeo/sdk";
+
+        const video = document.getElementById('videoPlayer');
+        const fadeOverlay = document.getElementById('fadeOverlay');
+        const spinner = document.getElementById('loadingSpinner');
+        const cutsceneTitle = document.getElementById('cutsceneTitle');
+        const cutsceneStatus = document.getElementById('cutsceneStatus');
+        const controls = document.getElementById('controls');
+
+        let videoData = null;
+        let syncInterval = null;
+
+        // Broadcast channel para comunicação
+        const channel = new BroadcastChannel('cutscene-player');
+
+        // Inicialização
+        OBR.onReady(async () => {
+            console.log("Player de cutscene inicializado");
+            
+            // Listener para mensagens
+            channel.onmessage = handleMessage;
+
+            // Listener de eventos do vídeo
+            video.addEventListener('loadeddata', onVideoLoaded);
+            video.addEventListener('play', onVideoPlay);
+            video.addEventListener('pause', onVideoPause);
+            video.addEventListener('ended', onVideoEnded);
+            video.addEventListener('timeupdate', onTimeUpdate);
+
+            // Controles de debug (opcional)
+            document.getElementById('playBtn').addEventListener('click', () => video.play());
+            document.getElementById('pauseBtn').addEventListener('click', () => video.pause());
+            document.getElementById('closeBtn').addEventListener('click', closePlayer);
+
+            // Verificar se há role de GM para mostrar controles
+            const role = await OBR.player.getRole();
+            if (role === "GM") {
+                controls.style.display = 'flex';
+            }
+        });
+
+        /**
+         * Manipula mensagens recebidas
+         */
+        function handleMessage(event) {
+            const { action, videoUrl, videoId, timestamp, autoplay, time, play } = event.data;
+
+            switch (action) {
+                case 'load':
+                    loadVideo(videoUrl, videoId, timestamp, autoplay);
+                    break;
+                case 'play':
+                    video.play();
+                    break;
+                case 'pause':
+                    video.pause();
+                    break;
+                case 'sync':
+                    syncVideo(time, play);
+                    break;
+                case 'getCurrentTime':
+                    channel.postMessage({ 
+                        action: 'currentTime', 
+                        time: video.currentTime 
+                    });
+                    break;
+                case 'close':
+                    closePlayer();
+                    break;
+            }
+        }
+
+        /**
+         * Carrega o vídeo
+         */
+        function loadVideo(url, id, startTime = 0, autoplay = true) {
+            videoData = { url, id, startTime };
+            
+            cutsceneTitle.textContent = `🎬 ${id}`;
+            cutsceneStatus.textContent = 'Carregando vídeo...';
+            
+            video.src = url;
+            video.currentTime = startTime;
+            
+            if (autoplay) {
+                video.play().catch(err => {
+                    console.error("Erro ao reproduzir:", err);
+                    cutsceneStatus.textContent = 'Erro: Clique para reproduzir';
+                });
+            }
+        }
+
+        /**
+         * Sincroniza vídeo com timestamp
+         */
+        function syncVideo(time, shouldPlay) {
+            const currentTime = video.currentTime;
+            const diff = Math.abs(currentTime - time);
+
+            // Sincronizar apenas se diferença for > 1 segundo
+            if (diff > 1) {
+                video.currentTime = time;
+            }
+
+            if (shouldPlay && video.paused) {
+                video.play();
+            } else if (!shouldPlay && !video.paused) {
+                video.pause();
+            }
+        }
+
+        /**
+         * Event handlers do vídeo
+         */
+        function onVideoLoaded() {
+            spinner.classList.add('hidden');
+            
+            // Fade in
+            setTimeout(() => {
+                fadeOverlay.classList.add('hidden');
+            }, 300);
+            
+            cutsceneStatus.textContent = 'Reproduzindo...';
+        }
+
+        function onVideoPlay() {
+            cutsceneStatus.textContent = 'Reproduzindo...';
+        }
+
+        function onVideoPause() {
+            cutsceneStatus.textContent = 'Pausado';
+        }
+
+        function onVideoEnded() {
+            cutsceneStatus.textContent = 'Finalizado';
+            
+            // Fade out
+            fadeOverlay.classList.remove('hidden');
+            
+            setTimeout(() => {
+                closePlayer();
+            }, 1500);
+        }
+
+        function onTimeUpdate() {
+            const current = formatTime(video.currentTime);
+            const duration = formatTime(video.duration);
+            cutsceneStatus.textContent = `${current} / ${duration}`;
+        }
+
+        /**
+         * Fecha o player
+         */
+        async function closePlayer() {
+            fadeOverlay.classList.remove('hidden');
+            
+            setTimeout(async () => {
+                channel.close();
+                await OBR.modal.close("cutscene-player");
+            }, 500);
+        }
+
+        /**
+         * Formata tempo em MM:SS
+         */
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '00:00';
+            
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+    </script>
+</body>
+</html>
