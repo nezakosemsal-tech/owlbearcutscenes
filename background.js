@@ -3,7 +3,7 @@
  * Gerencia sincronização de cutscenes via room metadata
  */
 
-import OBR from "https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@2.0.0/dist/index.min.js";
+import OBR from "@owlbear-rodeo/sdk";
 
 // Estado da extensão
 const CUTSCENE_METADATA_ID = "com.cutscene.player/state";
