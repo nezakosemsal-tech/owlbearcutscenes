@@ -1,407 +1,156 @@
-# 🎬 Owlbear Rodeo Cutscene Extension
+# 🎬 Cutscene Video Player - Owlbear Rodeo 2.0
 
-Extensão oficial para o **Owlbear Rodeo 2.0** que permite ao mestre (GM) reproduzir cutscenes sincronizadas em vídeo MP4 para todos os jogadores durante a sessão.
+Uma extensão simples para Owlbear Rodeo que permite carregar e tocar vídeos em fullscreen, perfeita para cutscenes e momentos cinematográficos nas suas sessões de RPG!
 
----
+## 🌟 Características
 
-## 📋 Visão Geral
+- 📹 **Upload de Vídeo Local**: Carregue qualquer vídeo do seu computador
+- 🖥️ **Fullscreen Overlay**: O vídeo cobre toda a interface do Owlbear
+- 🎮 **Controles Simples**: Play, pause e fechar com botões ou atalhos
+- 🔊 **Sincronização**: Todos os jogadores veem o vídeo ao mesmo tempo (via broadcast)
+- ⌨️ **Atalhos de Teclado**: ESC para fechar, Espaço para pausar/play
 
-Esta extensão implementa um sistema **simples e direto** de reprodução sincronizada de cutscenes, focado em:
+## 📦 Instalação
 
-✅ **Sincronização via identificadores** (não transfere arquivos)  
-✅ **Vídeos locais** (cada usuário possui seu próprio arquivo)  
-✅ **Controle exclusivo do GM** (iniciar, pausar, encerrar)  
-✅ **Arquitetura minimalista** (sem servidor ou armazenamento centralizado)  
+### Opção 1: Hospedar no GitHub Pages
 
----
+1. **Fork este repositório** ou faça upload dos arquivos para seu próprio repositório no GitHub
 
-## 🎯 Definição de Cutscene
+2. **Ative o GitHub Pages**:
+   - Vá em `Settings` → `Pages`
+   - Em "Source", selecione a branch `main` e pasta `/ (root)`
+   - Clique em `Save`
+   - Anote a URL gerada (ex: `https://seu-usuario.github.io/owlbear-cutscene-extension/`)
 
-Uma **cutscene** nesta extensão é:
+3. **Instale no Owlbear Rodeo**:
+   - Abra seu Owlbear Rodeo 2.0
+   - Clique no ícone de extensões
+   - Clique em "Add Custom Extension"
+   - Cole a URL do seu GitHub Pages seguida de `/manifest.json`
+   - Exemplo: `https://seu-usuario.github.io/owlbear-cutscene-extension/manifest.json`
 
-- Um arquivo de **vídeo MP4** armazenado **localmente** em cada máquina
-- Reproduzido de forma **sincronizada** entre todos os participantes
-- Identificado por um **ID único** acordado previamente
-- Controlado **exclusivamente pelo GM** durante a sessão
+### Opção 2: Desenvolvimento Local
 
----
-
-## 🏗️ Arquitetura Técnica
-
-### 1. **Componentes Principais**
-
-```
-owlbear-cutscene-extension/
-│
-├── manifest.json          # Configuração da extensão (API do Owlbear)
-├── index.html             # Interface principal (popover)
-├── background.js          # Lógica de sincronização e controle
-├── player.html            # Player de vídeo (modal fullscreen)
-├── style.css              # Estilos da interface
-└── icon.svg               # Ícone da extensão (opcional)
-```
-
-### 2. **Fluxo de Dados**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    OWLBEAR RODEO 2.0                        │
-│                      (Room State)                           │
-└─────────────────┬───────────────────────┬───────────────────┘
-                  │                       │
-        ┌─────────▼─────────┐   ┌────────▼──────────┐
-        │   GM (Mestre)     │   │  Player (Jogador) │
-        │                   │   │                   │
-        │ - Seleciona MP4   │   │ - Seleciona MP4   │
-        │ - Define ID       │   │ - Mesmo ID        │
-        │ - Inicia Cutscene │   │ - Recebe Sync     │
-        └───────────────────┘   └───────────────────┘
-                  │                       │
-                  └───────────┬───────────┘
-                              │
-                    ┌─────────▼─────────┐
-                    │  Broadcast API    │
-                    │  (Comunicação)    │
-                    └───────────────────┘
-```
-
-### 3. **Sincronização de Estado**
-
-A sincronização é feita através do **Room Metadata** do Owlbear Rodeo:
-
-```javascript
-{
-  "com.cutscene.player/state": {
-    "videoId": "intro_chapter1",
-    "status": "playing",        // "playing" | "paused" | "stopped"
-    "timestamp": 15.3,          // Timestamp atual em segundos
-    "startedAt": 1704067200000, // Timestamp de início (Unix ms)
-    "gmId": "player-123"        // ID do GM que iniciou
-  }
-}
-```
-
-**Cálculo de Sincronização:**
-```javascript
-const elapsed = (Date.now() - startedAt) / 1000;
-const syncedTime = timestamp + elapsed;
-video.currentTime = syncedTime;
-```
-
-### 4. **Permissões e Roles**
-
-| Ação               | GM  | Jogador |
-|--------------------|-----|---------|
-| Iniciar Cutscene   | ✅  | ❌      |
-| Pausar Cutscene    | ✅  | ❌      |
-| Encerrar Cutscene  | ✅  | ❌      |
-| Visualizar Player  | ✅  | ✅      |
-| Selecionar Arquivo | ✅  | ✅      |
-
-A verificação é feita via `OBR.player.getRole()`:
-```javascript
-const role = await OBR.player.getRole();
-const isGM = role === "GM";
-```
-
----
-
-## 🚀 Como Usar
-
-### **Para o Mestre (GM):**
-
-1. **Preparar o vídeo:**
-   - Tenha um arquivo MP4 armazenado localmente
-   - Defina um ID único (ex: `intro_dungeon`)
-   - Compartilhe o ID e o nome do arquivo com os jogadores **antes da sessão**
-
-2. **Iniciar cutscene:**
-   - Abra a extensão no Owlbear Rodeo
-   - Insira o **ID do vídeo** no campo correspondente
-   - Selecione o **arquivo MP4 local**
-   - Clique em **"Iniciar Cutscene"**
-
-3. **Controlar reprodução:**
-   - Use os botões **Pausar/Retomar** para controlar o vídeo
-   - Clique em **Encerrar** para finalizar a cutscene
-
-### **Para os Jogadores:**
-
-1. **Preparar o vídeo:**
-   - Baixe o mesmo arquivo MP4 que o GM possui
-   - Guarde-o em um local acessível
-
-2. **Aguardar cutscene:**
-   - Quando o GM iniciar, a extensão solicitará o arquivo
-   - Clique em **"Selecionar Arquivo Local"**
-   - Selecione o MP4 correspondente ao ID informado
-
-3. **Assistir:**
-   - O vídeo será reproduzido automaticamente
-   - A sincronização acontece automaticamente via timestamps
-
----
-
-## 🔧 Implementação: Pontos Técnicos
-
-### **1. Abertura do Modal de Vídeo**
-
-O player utiliza `OBR.modal.open()` para exibir o vídeo em tela cheia:
-
-```javascript
-OBR.modal.open({
-    id: "cutscene-player",
-    url: "/player.html",
-    height: window.innerHeight,
-    width: window.innerWidth,
-    hidePaper: true  // Remove bordas/padding
-});
-```
-
-### **2. Comunicação entre Componentes**
-
-Utiliza **Broadcast Channel API** para comunicação entre a interface principal e o player:
-
-```javascript
-const channel = new BroadcastChannel('cutscene-player');
-
-// Enviar mensagem
-channel.postMessage({
-    action: 'play',
-    timestamp: 15.3
-});
-
-// Receber mensagem
-channel.onmessage = (event) => {
-    const { action, timestamp } = event.data;
-    // Processar ação
-};
-```
-
-### **3. Sincronização Temporal**
-
-Para manter todos os jogadores sincronizados:
-
-```javascript
-function syncVideo(targetTime, shouldPlay) {
-    const currentTime = video.currentTime;
-    const diff = Math.abs(currentTime - targetTime);
-
-    // Sincronizar apenas se diferença > 1 segundo
-    if (diff > 1) {
-        video.currentTime = targetTime;
-    }
-
-    if (shouldPlay && video.paused) {
-        video.play();
-    }
-}
-```
-
-### **4. Entrada de Jogadores Durante Cutscene**
-
-Quando um jogador entra durante uma cutscene ativa:
-
-1. `OBR.room.onMetadataChange()` detecta estado existente
-2. Calcula timestamp correto: `timestamp + (Date.now() - startedAt)`
-3. Solicita arquivo local ao jogador
-4. Inicia reprodução no timestamp calculado
-
-```javascript
-OBR.room.onMetadataChange(async (metadata) => {
-    const cutsceneState = metadata[CUTSCENE_METADATA_ID];
-    
-    if (cutsceneState && !playerWindow) {
-        const elapsed = (Date.now() - cutsceneState.startedAt) / 1000;
-        const syncedTime = cutsceneState.timestamp + elapsed;
-        
-        await promptPlayerForVideo(
-            cutsceneState.videoId, 
-            syncedTime, 
-            cutsceneState.status
-        );
-    }
-});
-```
-
----
-
-## ⚠️ Limitações da API do Owlbear Rodeo
-
-### **1. Bloqueio de Interação**
-
-**Limitação:** A API do Owlbear Rodeo 2.0 **não oferece** método nativo para bloquear completamente a interação dos jogadores (movimento, desenho, edição).
-
-**Workaround implementado:**
-```javascript
-// Sinalizar estado via metadata
-await OBR.room.setMetadata({
-    "com.cutscene.player/locked": true
-});
-
-// Nota: Bloqueio real depende de outras extensões ou 
-// controle manual do GM (ex: desabilitar ferramentas)
-```
-
-**Recomendação:** Instrua os jogadores a **não interagir** durante cutscenes.
-
----
-
-### **2. Transferência de Arquivos**
-
-**Limitação:** A API **não suporta** transferência de arquivos binários entre usuários (e nem é desejável para esta extensão).
-
-**Solução:** Cada usuário **deve possuir** o arquivo localmente. A sincronização é feita apenas por **identificadores** (videoId).
-
----
-
-### **3. Armazenamento Persistente**
-
-**Limitação:** Não há sistema nativo de storage permanente na API para biblioteca de vídeos.
-
-**Solução:** Esta extensão é **stateless** – não armazena histórico de cutscenes ou biblioteca. Cada sessão é independente.
-
----
-
-### **4. Controle de Permissões Granular**
-
-**Limitação:** A API diferencia apenas entre **GM** e **Player**, sem roles customizadas.
-
-**Solução:** Suficiente para este caso – GM controla, jogadores visualizam.
-
----
-
-## 📦 Estrutura de Arquivos
-
-```
-owlbear-cutscene-extension/
-│
-├── manifest.json              # Manifest da extensão (API v1)
-│   └── Define: nome, versão, action (popover)
-│
-├── index.html                 # Interface principal
-│   ├── Painel do GM (controles)
-│   ├── Painel do Jogador (status)
-│   └── Instruções de uso
-│
-├── background.js              # Lógica de negócio
-│   ├── OBR.onReady()         # Inicialização
-│   ├── startCutscene()       # Iniciar cutscene
-│   ├── pauseCutscene()       # Pausar
-│   ├── resumeCutscene()      # Retomar
-│   ├── stopCutscene()        # Encerrar
-│   ├── syncCutsceneState()   # Sincronizar estado
-│   └── handleCutsceneStateChange() # Reagir a mudanças
-│
-├── player.html                # Player de vídeo (modal)
-│   ├── <video> element       # Tag HTML5 video
-│   ├── Overlay de fade       # Transições
-│   ├── Letterbox effect      # Barras pretas
-│   └── Controles (debug)     # Play/Pause/Fechar
-│
-├── style.css                  # Estilos CSS
-│   ├── Tema escuro (dark mode)
-│   ├── Animações (pulse, fade)
-│   └── Responsivo
-│
-└── README.md                  # Esta documentação
-```
-
----
-
-## 🛠️ Instalação e Desenvolvimento
-
-### **Pré-requisitos:**
-- Node.js (para desenvolvimento local, opcional)
-- Conta no Owlbear Rodeo 2.0
-
-### **Instalação:**
-
-1. Clone ou faça download desta extensão
-2. Abra o Owlbear Rodeo 2.0
-3. Vá em **Settings → Extensions → Install from URL**
-4. Insira o URL da extensão ou faça upload local
-
-### **Desenvolvimento Local:**
-
+1. Clone o repositório:
 ```bash
-# Instalar dependências (se usar bundler)
-npm install
-
-# Servir localmente (exemplo com http-server)
-npx http-server . -p 8080
-
-# Adicionar no Owlbear via URL local
-http://localhost:8080/manifest.json
+git clone https://github.com/seu-usuario/owlbear-cutscene-extension.git
+cd owlbear-cutscene-extension
 ```
 
----
+2. Sirva os arquivos localmente (exemplo com Python):
+```bash
+# Python 3
+python -m http.server 8000
 
-## 📚 Referências da API
+# Ou use qualquer servidor local (Live Server do VS Code, etc)
+```
 
-- [Owlbear Rodeo SDK Documentation](https://docs.owlbear.rodeo/sdk)
-- [Extension Manifest Reference](https://docs.owlbear.rodeo/sdk/extensions/manifest)
-- [Room Metadata API](https://docs.owlbear.rodeo/sdk/api/room#metadata)
-- [Modal API](https://docs.owlbear.rodeo/sdk/api/modal)
+3. No Owlbear Rodeo, adicione a extensão usando:
+```
+http://localhost:8000/manifest.json
+```
 
----
+## 🎯 Como Usar
 
-## 🔒 Segurança e Privacidade
+1. **Abra a extensão** clicando no ícone no Owlbear Rodeo
 
-✅ **Nenhum dado é enviado para servidores externos**  
-✅ **Vídeos são processados localmente em cada máquina**  
-✅ **Apenas identificadores (IDs) são sincronizados via Owlbear**  
-✅ **Não há coleta de telemetria ou analytics**  
+2. **Escolha um vídeo**:
+   - Clique em "📁 Escolher Vídeo"
+   - Selecione um arquivo de vídeo do seu computador (MP4, WebM, etc)
 
----
+3. **Preview**:
+   - Você verá um preview do vídeo carregado
+   - Pode testar a reprodução no preview
+
+4. **Tocar em Fullscreen**:
+   - Clique no botão "▶️ Tocar em Fullscreen"
+   - O vídeo irá cobrir toda a tela do Owlbear
+   - Quando terminar, a interface volta ao normal automaticamente
+
+5. **Controles durante o vídeo**:
+   - **ESC**: Fechar o vídeo
+   - **Espaço**: Pausar/Continuar
+   - **Botão ✕**: Fechar manualmente
+
+## 🔧 Estrutura do Projeto
+
+```
+owlbear-cutscene-extension/
+├── manifest.json     # Configuração da extensão Owlbear
+├── index.html        # Interface principal
+├── script.js         # Lógica da aplicação
+├── styles.css        # Estilos e animações
+├── icon.svg          # Ícone da extensão
+└── README.md         # Este arquivo
+```
+
+## 🎨 Personalizações
+
+### Alterar Cores
+Edite o arquivo `styles.css` para mudar as cores do gradient:
+```css
+background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+```
+
+### Modificar Tamanho da Interface
+No arquivo `script.js`, linha 4-5:
+```javascript
+await OBR.action.setHeight(600);
+await OBR.action.setWidth(400);
+```
+
+## 🐛 Solução de Problemas
+
+### O vídeo não aparece para outros jogadores
+- Atualmente, a extensão usa Blob URLs que são locais ao navegador
+- Para compartilhar com jogadores, todos precisam fazer upload do mesmo vídeo
+- Em versões futuras, podemos implementar upload para servidor
+
+### Vídeo não toca em fullscreen
+- Verifique se seu navegador permite autoplay de vídeos
+- Alguns navegadores bloqueiam autoplay por políticas de segurança
+
+### Extensão não carrega no Owlbear
+- Verifique se o GitHub Pages está ativo
+- Confirme que a URL do manifest.json está correta
+- Verifique o console do navegador para erros (F12)
+
+## 📝 Notas Técnicas
+
+### Broadcast vs Upload
+A extensão atual usa **Blob URLs locais**, o que significa:
+- ✅ Rápido e sem necessidade de servidor
+- ❌ Cada jogador precisa fazer upload do próprio vídeo
+
+Para sincronização real, seria necessário:
+- Um servidor para hospedar os vídeos
+- Sistema de upload e storage (ex: Firebase, AWS S3)
+- Envio de URL do vídeo via broadcast
+
+### Formatos Suportados
+A extensão suporta qualquer formato que o navegador aceite:
+- MP4 (H.264) - Recomendado
+- WebM
+- OGG
+- MOV (depende do navegador)
+
+## 🚀 Melhorias Futuras
+
+- [ ] Upload para servidor (Firebase Storage)
+- [ ] Biblioteca de vídeos pré-carregados
+- [ ] Controles de volume
+- [ ] Playlists de vídeos
+- [ ] Efeitos de transição
+- [ ] Legendas/Closed Captions
+
+## 📄 Licença
+
+MIT License - Sinta-se livre para usar e modificar!
 
 ## 🤝 Contribuições
 
-Esta é uma extensão de código aberto. Sugestões de melhorias:
-
-- [ ] Adicionar suporte a legendas (WebVTT)
-- [ ] Implementar fila de cutscenes
-- [ ] Adicionar efeitos de transição customizáveis
-- [ ] Suporte a áudio ambiente durante cutscenes
-- [ ] Integração com bibliotecas de assets
+Contribuições são bem-vindas! Abra uma issue ou pull request.
 
 ---
 
-## 📝 Licença
-
-MIT License - Use livremente, modificar e distribuir conforme necessário.
-
----
-
-## 🎓 Conceitos Aprendidos
-
-Este projeto demonstra:
-
-1. **Sincronização distribuída** via timestamps e metadata compartilhado
-2. **Arquitetura stateless** sem necessidade de servidor
-3. **Comunicação entre componentes** via Broadcast Channel API
-4. **Integração com API de extensões** do Owlbear Rodeo 2.0
-5. **UX responsiva** adaptada para roles diferentes (GM/Jogador)
-
----
-
-## 🐛 Troubleshooting
-
-### **Vídeo não sincroniza:**
-- Verifique se todos possuem o **mesmo arquivo MP4**
-- Certifique-se de que o **ID do vídeo é idêntico**
-- Recarregue a página do Owlbear Rodeo
-
-### **Player não abre:**
-- Verifique permissões de pop-up no navegador
-- Tente usar navegador baseado em Chromium
-- Abra o console (F12) para ver erros
-
-### **Diferença de mais de 2 segundos:**
-- Pode ocorrer em conexões lentas
-- A extensão tenta ressincronizar automaticamente
-- Em último caso, recarregue o player
-
----
-
-**Desenvolvido com ❤️ para a comunidade Owlbear Rodeo**
+**Desenvolvido para Owlbear Rodeo 2.0** 🦉🐻

@@ -1,15 +1,15 @@
 {
-  "name": "Cutscene Player",
+  "name": "Cutscene Video Player",
   "version": "1.0.0",
   "manifest_version": 1,
-  "description": "Extensão para reproduzir cutscenes sincronizadas localmente durante sessões do Owlbear Rodeo",
-  "author": "Cutscene Extension",
-  "icon": "icon.svg",
+  "description": "Play fullscreen cutscene videos in Owlbear Rodeo",
+  "author": "Saimon",
+  "icon": "/icon.svg",
   "action": {
     "title": "Cutscene Player",
-    "icon": "icon.svg",
-    "popover": "index.html",
-    "height": 400,
-    "width": 350
+    "icon": "/icon.svg",
+    "popover": "/index.html",
+    "height": 600,
+    "width": 400
   }
 }

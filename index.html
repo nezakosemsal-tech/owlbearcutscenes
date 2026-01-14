@@ -3,90 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cutscene Player</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Cutscene Video Player - Owlbear Rodeo</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>🎬 Cutscene Player</h1>
-            <p class="subtitle">Reprodução sincronizada de vídeos locais</p>
-        </header>
-
-        <!-- Painel do GM -->
-        <div id="gmPanel" class="panel" style="display: none;">
-            <h2>Controles do Mestre</h2>
-            
-            <div class="input-group">
-                <label for="videoId">ID do Vídeo:</label>
-                <input type="text" id="videoId" placeholder="ex: intro_chapter1" />
-                <small>Nome do arquivo sem extensão (deve estar em cada máquina)</small>
-            </div>
-
-            <div class="input-group">
-                <label for="videoPath">Caminho Local do Vídeo:</label>
-                <input type="file" id="videoFile" accept="video/mp4" />
-                <small>Selecione o arquivo MP4 localmente para testar</small>
-            </div>
-
-            <div class="controls">
-                <button id="startCutscene" class="btn btn-primary">
-                    ▶️ Iniciar Cutscene
-                </button>
-                <button id="pauseCutscene" class="btn btn-secondary" disabled>
-                    ⏸️ Pausar
-                </button>
-                <button id="resumeCutscene" class="btn btn-secondary" disabled style="display: none;">
-                    ▶️ Retomar
-                </button>
-                <button id="stopCutscene" class="btn btn-danger" disabled>
-                    ⏹️ Encerrar
-                </button>
-            </div>
-
-            <div class="status" id="gmStatus">
-                <strong>Status:</strong> Aguardando...
-            </div>
+        <h1>🎬 Cutscene Player</h1>
+        <p class="subtitle">Carregue um vídeo para tocar em fullscreen</p>
+        
+        <div class="upload-section">
+            <input type="file" id="videoInput" accept="video/*" />
+            <label for="videoInput" class="upload-button">
+                📁 Escolher Vídeo
+            </label>
+            <div id="fileName" class="file-name"></div>
         </div>
 
-        <!-- Painel do Jogador -->
-        <div id="playerPanel" class="panel" style="display: none;">
-            <h2>Visualização do Jogador</h2>
-            <p class="info">Aguardando cutscene do mestre...</p>
-            <div class="status" id="playerStatus">
-                <strong>Status:</strong> Sem cutscene ativa
-            </div>
+        <div id="videoPreview" class="video-preview" style="display: none;">
+            <video id="previewVideo" controls></video>
         </div>
 
-        <!-- Indicador de Cutscene Ativa -->
-        <div id="activeCutscene" class="active-cutscene" style="display: none;">
-            <div class="cutscene-info">
-                <span class="pulse">🔴</span>
-                <strong>Cutscene Ativa:</strong>
-                <span id="activeCutsceneName">-</span>
-            </div>
-            <div class="cutscene-time">
-                <span id="cutsceneTime">00:00 / 00:00</span>
-            </div>
-        </div>
+        <button id="playButton" class="play-button" style="display: none;">
+            ▶️ Tocar em Fullscreen
+        </button>
 
-        <!-- Instruções -->
-        <div class="instructions">
-            <h3>📋 Como usar:</h3>
+        <div class="info">
+            <h3>ℹ️ Como usar:</h3>
             <ol>
-                <li><strong>Preparação:</strong> Todos os participantes devem ter o mesmo arquivo MP4 localmente.</li>
-                <li><strong>Identificador:</strong> Use o mesmo ID do vídeo em todas as máquinas (ex: "intro_dungeon").</li>
-                <li><strong>GM:</strong> Selecione o arquivo local, insira o ID e clique em "Iniciar Cutscene".</li>
-                <li><strong>Jogadores:</strong> O vídeo será reproduzido automaticamente e sincronizado.</li>
-                <li><strong>Sincronização:</strong> A extensão sincroniza play/pause/stop via room state.</li>
+                <li>Escolha um vídeo do seu computador</li>
+                <li>Clique em "Tocar em Fullscreen"</li>
+                <li>O vídeo irá cobrir toda a tela do Owlbear</li>
+                <li>Quando terminar, a interface voltará ao normal</li>
             </ol>
         </div>
-
-        <footer>
-            <p class="version">v1.0.0 | Owlbear Rodeo Extension</p>
-        </footer>
     </div>
 
-    <script src="background.js" type="module"></script>
+    <!-- Fullscreen Overlay -->
+    <div id="fullscreenOverlay" class="fullscreen-overlay">
+        <video id="fullscreenVideo" autoplay></video>
+        <button id="closeButton" class="close-button">✕</button>
+    </div>
+
+    <script src="https://sdk.owlbear.rodeo/latest/sdk.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
